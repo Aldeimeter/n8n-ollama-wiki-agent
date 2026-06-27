@@ -1,0 +1,4 @@
+services:
+  n8n:
+    volumes:
+      - /vagrant/provisioning/n8n/workflow.json:/workflow.json:ro
