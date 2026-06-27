@@ -2,6 +2,7 @@
 
 set -euo pipefail
 
+
 install -d /opt/n8n
 cp /vagrant/provisioning/n8n/docker-compose.yml /opt/n8n/
 
@@ -15,8 +16,47 @@ N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-}
 TZ=${N8N_TZ:-UTC}
 EOF
 
+if [ "${N8N_OWNER_MANAGED_BY_ENV:-false}" = "true" ]; then
 
-cd /opt/n8n 
+  # htpasswd (apache2-utils) is used to bcrypt-hash the owner password below.
+  command -v htpasswd >/dev/null || { apt-get update -qq && apt-get install -y apache2-utils; }
+  OWNER_PASS_HASH="$(htpasswd -bnBC 10 "" "${N8N_OWNER_PASSWORD:-changeme}" \
+   | tr -d '\n' | cut -d: -f2- | sed 's/^\$2y\$/$2a$/')"
+
+  cat > /opt/n8n/owner.env << EOF
+N8N_INSTANCE_OWNER_MANAGED_BY_ENV=true
+N8N_INSTANCE_OWNER_EMAIL=${N8N_OWNER_EMAIL:-admin@admin.com}
+N8N_INSTANCE_OWNER_FIRST_NAME=${N8N_OWNER_FIRST_NAME:-Admin}
+N8N_INSTANCE_OWNER_LAST_NAME=${N8N_OWNER_LAST_NAME:-User}
+# Single-quoted so Compose treats the hash literally; without this it
+# interpolates the '$' segments of the bcrypt hash into blank strings.
+N8N_INSTANCE_OWNER_PASSWORD_HASH='${OWNER_PASS_HASH}'
+EOF
+else
+  : > /opt/n8n/owner.env # empty file -> env_file loads nothing, feature stays off
+fi
+
+# Credentials the demo workflow references. Workflows don't carry their
+# credentials, so we seed them here with the exact IDs baked into
+# workflow.json (so the node references resolve). Rendered from env with jq
+# for safe escaping; n8n encrypts the plaintext data on import.
+command -v jq >/dev/null || { apt-get update -qq && apt-get install -y jq; }
+jq -n \
+  --arg pgdb "${AGENT_DB_NAME:-agent_memory}" \
+  --arg pguser "${AGENT_DB_USER:-agent}" \
+  --arg pgpass "${AGENT_DB_PASS:-changeme}" \
+  '[
+    {id:"kF643xZ6lToMuekg", name:"Postgres account", type:"postgres",
+     data:{host:"postgresql", database:$pgdb, user:$pguser, password:$pgpass, port:5432, ssl:"disable"}},
+    {id:"tSXCUNSIyymDwWym", name:"Ollama account", type:"ollamaApi",
+     data:{baseUrl:"http://ollama:11434"}}
+  ]' > /opt/n8n/credentials.json
+# n8n runs as UID 1000 (node) inside the container; umask 077 made this file
+# root-only, so hand ownership to 1000 so the container can read it while it
+# stays non-world-readable (it holds the DB password).
+chown 1000:1000 /opt/n8n/credentials.json
+
+cd /opt/n8n
 
 WF="/vagrant/provisioning/n8n/workflow.json"
 WF_ID="${N8N_WORKFLOW_ID:-demo0001}"
@@ -40,16 +80,25 @@ if [ "$ready" -ne 1 ]; then
   exit 1
 fi
 
-if [ -f "$WF" ] && \
-  ! docker compose "${files[@]}" run --rm n8n export:workflow --id="$WF_ID" --output=/tmp/p.json >/dev/null 2>&1; then
-  
-  docker compose "${files[@]}" run --rm n8n import:workflow --input=/workflow.json \
-    || echo "import returned non-zero (often a non-fatal warning); continuing"
+if [ -f "$WF" ]; then
+  # Seed credentials first (idempotent) so the workflow's references resolve.
+  # Runs every provision, independent of whether the workflow already exists —
+  # the broken state is a re-provision where the workflow is present but its
+  # credentials are not.
+  docker compose "${files[@]}" run --rm n8n import:credentials --input=/credentials.json \
+    || echo "credential import returned non-zero; continuing"
 
-  # n8n 2.0 uses publish:workflow, older 1.x uses update:workflow --active=true
-  docker compose "${files[@]}" run --rm n8n publish:workflow --id="$WF_ID" \
-  || docker compose "${files[@]}" run --rm n8n update:workflow --id="$WF_ID" --active=true \
-  || echo "couldn't auto-publish $WF_ID - activate it once in the UI"
+  # Import + publish the workflow only if it isn't already present.
+  if ! docker compose "${files[@]}" run --rm n8n export:workflow --id="$WF_ID" --output=/tmp/p.json >/dev/null 2>&1; then
+
+    docker compose "${files[@]}" run --rm n8n import:workflow --input=/workflow.json \
+      || echo "import returned non-zero (often a non-fatal warning); continuing"
+
+    # n8n 2.0 uses publish:workflow, older 1.x uses update:workflow --active=true
+    docker compose "${files[@]}" run --rm n8n publish:workflow --id="$WF_ID" \
+    || docker compose "${files[@]}" run --rm n8n update:workflow --id="$WF_ID" --active=true \
+    || echo "couldn't auto-publish $WF_ID - activate it once in the UI"
+  fi
 fi
 
 docker compose "${files[@]}" up -d

@@ -1,0 +1,120 @@
+{
+  "name": "test ollama",
+  "nodes": [
+    {
+      "parameters": {
+        "availableInChat": true,
+        "agentName": "test-ollama",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "da1f4303-6fe8-4935-abed-410ff17a180c",
+      "name": "When chat message received",
+      "webhookId": "dfdc959f-fb46-4883-83cb-82b4d1bd5c24"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "a454d284-b56c-434f-b8a0-db4aadf978c8",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "gemma2:2b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        80,
+        208
+      ],
+      "id": "c4ead59d-d788-4570-9ba8-0dd07057cbc8",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "tSXCUNSIyymDwWym",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.4,
+      "position": [
+        224,
+        208
+      ],
+      "id": "6cfaed33-4c80-4fa3-a91e-78ce9cc0ed4a",
+      "name": "Postgres Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "kF643xZ6lToMuekg",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "87aaad9e-f7a2-4696-af3a-9c89621c3ffc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "24a3b52c0f401d0fbe4bd6af715bf218a4c1ddb2c6b99313157535ea15d2c9d0"
+  },
+  "nodeGroups": [],
+  "id": "4dDXXTSQZT5Ugq5f",
+  "tags": []
+}

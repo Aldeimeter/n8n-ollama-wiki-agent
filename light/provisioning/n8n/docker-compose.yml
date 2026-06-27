@@ -7,6 +7,8 @@ services:
     restart: unless-stopped
     ports:
       - 5678:5678
+    env_file:
+      - owner.env
     environment:
       DB_TYPE: postgresdb
       DB_POSTGRESDB_HOST: postgresql
@@ -20,3 +22,13 @@ services:
       TZ: ${TZ:-UTC}
     volumes:
       - n8n-data:/home/node/.n8n
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q --spider http://localhost:5678/healthz/readiness || exit 1",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
