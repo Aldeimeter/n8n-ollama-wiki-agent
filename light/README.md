@@ -1,4 +1,4 @@
-# Infra Oracle — Light
+# n8n-ollama-wiki-agent — Light
 
 A self-hosted, RAG-style internal knowledge assistant. **n8n** orchestrates a
 chat agent that answers from a corporate wiki, **Ollama** runs the LLM locally,
