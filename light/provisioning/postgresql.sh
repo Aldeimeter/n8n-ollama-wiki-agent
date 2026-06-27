@@ -29,6 +29,8 @@ create_db() {
   local user="$1" pass="$2" db="$3"
   sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${user}'" | grep -q 1 \
     || sudo -u postgres psql -c "CREATE ROLE ${user} LOGIN PASSWORD '${pass}';"
+  # Re-sync password every run so it always matches .env (idempotent).
+  sudo -u postgres psql -c "ALTER ROLE ${user} WITH LOGIN PASSWORD '${pass}';"
   sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='${db}'" | grep -q 1 \
     || sudo -u postgres createdb -O "${user}" "${db}"
 }
