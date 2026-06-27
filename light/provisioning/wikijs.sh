@@ -49,7 +49,7 @@ for _ in $(seq 1 30); do
   sleep 2
 done
 
-# Seed the home page. Runs every provision and never aborts the run: re-runs
+# Seed content pages. Runs every provision and never aborts the run: re-runs
 # hit the unique-path constraint and just report "already exists".
 login=$(jq -n --arg u "$ADMIN_EMAIL" --arg p "$ADMIN_PASS" \
   '{query:"mutation($u:String!,$p:String!){authentication{login(username:$u,password:$p,strategy:\"local\"){jwt}}}",variables:{u:$u,p:$p}}')
@@ -57,14 +57,22 @@ jwt=$(curl -fsS -X POST http://localhost:3000/graphql \
   -H 'Content-Type: application/json' -d "$login" 2>/dev/null \
   | jq -r '.data.authentication.login.jwt // empty')
 
-if [ -z "$jwt" ]; then
-  echo "WARN: could not log in to seed home page; skipping" >&2
-else
-  content=$(cat /vagrant/provisioning/wikijs/home.md)
-  page=$(jq -n --arg c "$content" \
-    '{query:"mutation($c:String!){pages{create(content:$c,description:\"\",editor:\"markdown\",isPublished:true,isPrivate:false,locale:\"en\",path:\"home\",tags:[],title:\"Home\"){responseResult{succeeded message}}}}",variables:{c:$c}}')
+# create_page <path> <title> <markdown-file>
+create_page() {
+  local path="$1" title="$2" file="$3"
+  local content payload result
+  content=$(cat "$file")
+  payload=$(jq -n --arg c "$content" --arg p "$path" --arg t "$title" \
+    '{query:"mutation($c:String!,$p:String!,$t:String!){pages{create(content:$c,description:\"\",editor:\"markdown\",isPublished:true,isPrivate:false,locale:\"en\",path:$p,tags:[],title:$t){responseResult{succeeded message}}}}",variables:{c:$c,p:$p,t:$t}}')
   result=$(curl -fsS -X POST http://localhost:3000/graphql \
     -H "Authorization: Bearer ${jwt}" -H 'Content-Type: application/json' \
-    -d "$page" 2>/dev/null || true)
-  echo "home page: $(echo "$result" | jq -r '.data.pages.create.responseResult.message // .errors[0].message // "no response"')"
+    -d "$payload" 2>/dev/null || true)
+  echo "page ${path}: $(echo "$result" | jq -r '.data.pages.create.responseResult.message // .errors[0].message // "no response"')"
+}
+
+if [ -z "$jwt" ]; then
+  echo "WARN: could not log in to seed pages; skipping" >&2
+else
+  create_page home         Home                   /vagrant/provisioning/wikijs/home.md
+  create_page vagrant-setup "Vagrant Configuration" /vagrant/provisioning/wikijs/vagrant-setup.md
 fi
