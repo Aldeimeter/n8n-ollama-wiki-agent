@@ -1,0 +1,64 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Load .env (KEY=VALUE per line) into a hash, if it exists
+def load_env(path)
+  return {} unless File.exist?(path)
+  File.readlines(path).each_with_object({}) do |line, h|
+    line = line.strip
+    next if line.empty? || line.start_with?("#") # skip blanks + comments
+    key, _, val = line.partition("=")
+    h[key.strip] = val.strip
+  end
+end
+
+ENV_VARS = load_env(File.expand_path(".env", __dir__))
+    
+# One entry per VM: machine name => hostname, private IP, RAM (MB), vCPUs.
+# Note: "wiki.js" is defined as "wikijs" because dots in hostnames are treated
+# as FQDN separators and confuse some tooling. Rename if you really want the dot.
+VMS = {
+  "postgresql" => { hostname: "postgresql", ip: "192.168.56.13", memory: 2048, cpus: 2, provision: "provisioning/postgresql.sh" },
+  "ollama"     => { hostname: "ollama",     ip: "192.168.56.12", memory: 4096, cpus: 4 , provision: "provisioning/ollama.sh", docker: true},
+  "n8n"        => { hostname: "n8n",        ip: "192.168.56.11", memory: 2048, cpus: 2, forwarded_ports: [{ guest: 5678, host: 5678 }], provision: "provisioning/n8n.sh", docker: true },
+  "wikijs"     => { hostname: "wikijs",     ip: "192.168.56.14", memory: 2048, cpus: 2 , forwarded_ports: [{ guest: 3000, host: 3000 }] , provision: "provisioning/wikijs.sh", docker: true},
+}
+
+# Build "<ip> <hostname>" lines so every VM can resolve the others by name.
+HOSTS_BLOCK = VMS.map { |_, o| "#{o[:ip]} #{o[:hostname]}" }.join('\n')
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/ubuntu-24.04"
+
+  VMS.each do |name, opts|
+    config.vm.define name do |node|
+      node.vm.hostname = opts[:hostname]
+      node.vm.network "private_network", ip: opts[:ip]
+
+      (opts[:forwarded_ports] || []).each do |pf|
+          node.vm.network "forwarded_port", guest: pf[:guest], host: pf[:host], host_ip: "127.0.0.1"
+      end
+
+      node.vm.provider "virtualbox" do |vb|
+        vb.name   = name
+        vb.memory = opts[:memory]
+        vb.cpus   = opts[:cpus]
+      end
+
+      # Add /etc/hosts entries for the whole stack (idempotent).
+      node.vm.provision "shell", inline:
+        "grep -q '## vagrant-stack ##' /etc/hosts || " \
+        "printf '## vagrant-stack ##\\n#{HOSTS_BLOCK}\\n' >> /etc/hosts"
+
+
+      # Per-VM setup script.
+      node.vm.provision "shell", path: "provisioning/install-docker.sh" if opts[:docker]
+
+      script = opts[:provision]
+      if script && File.exist?(script)
+        node.vm.provision "shell", path: script,
+          env: ENV_VARS.merge(opts[:env] || {})
+      end
+    end
+  end
+end
