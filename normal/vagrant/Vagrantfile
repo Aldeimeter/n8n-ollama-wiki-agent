@@ -9,7 +9,8 @@ VMS = {
   "postgresql" => { hostname: "postgresql", ip: "192.168.56.13", memory: 2048, cpus: 2 },
   "ollama"     => { hostname: "ollama",     ip: "192.168.56.12", memory: 4096, cpus: 4 },
   "n8n"        => { hostname: "n8n",        ip: "192.168.56.11", memory: 2048, cpus: 2, forwarded_ports: [{ guest: 5678, host: 5678 }]  },
-  "wikijs"     => { hostname: "wikijs",     ip: "192.168.56.14", memory: 2048, cpus: 2 , forwarded_ports: [{ guest: 3000, host: 3000 }] },
+  "wikijs"     => { hostname: "wikijs",     ip: "192.168.56.14", memory: 2048, cpus: 2, forwarded_ports: [{ guest: 3000, host: 3000 }] },
+  "redis"      => { hostname: "redis",      ip: "192.168.56.15", memory: 1024, cpus: 1 }
 }
 
 # Build "<ip> <hostname>" lines so every VM can resolve the others by name.

@@ -1,0 +1,14 @@
+---
+# bind redis to private network address
+redis_bind_interface: "127.0.0.1 {{ stack_hosts.redis }}"
+redis_port: 6379
+
+# set redis password
+redis_requirepass: "{{ vault_redis_password }}"
+
+# cap RAM usage
+redis_maxmemory: "256mb"
+redis_maxmemory_policy: "allkeys-lru"
+
+# make redis append-only
+redis_appendonly: "yes"

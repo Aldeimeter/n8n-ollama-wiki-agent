@@ -44,6 +44,12 @@
   roles:
     - wikijs
 
+- name: Redis
+  hosts: queue
+  become: true
+  roles:
+    - geerlingguy.redis
+
 - name: N8N
   hosts: automation
   become: true

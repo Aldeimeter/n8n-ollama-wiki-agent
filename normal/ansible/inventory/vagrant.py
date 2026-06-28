@@ -14,6 +14,7 @@ GROUPS = {
     "ollama": ["ai"],
     "n8n": ["automation"],
     "wikijs": ["wiki"],
+    "redis": ["queue"],
 }
 
 # this script lives at normal/ansible/inventory/vagrant.py
