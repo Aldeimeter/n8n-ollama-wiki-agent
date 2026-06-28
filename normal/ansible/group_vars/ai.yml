@@ -1,0 +1,3 @@
+ollama_version: "0.30.11"
+ollama_models:
+  - "gemma2:2b"

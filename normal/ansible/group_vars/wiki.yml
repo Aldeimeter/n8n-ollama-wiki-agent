@@ -1,0 +1,8 @@
+wikijs_version: "2.5"
+wikijs_site_url: "http://localhost:3000"
+
+wikijs_admin:
+  email: "admin@admin.com"
+  password: "{{ vault_wikijs_admin_password }}"
+
+wikijs_db: "{{ databases.wikijs }}"

@@ -1,0 +1,30 @@
+# shared vars every host may need
+private_subnet: "192.168.56.0/24"
+
+# Where apps reach postgres (resolved via /etc/hosts set by a common role)
+postgres_host: "postgresql"
+postgres_port: 5432
+
+# Db registry: structure is clear, passwords pulled from the vault.
+# Postgres iterates this to create roles+DBs; each app reads its own entry.
+databases:
+  n8n:
+    name: n8n
+    user: n8n
+    password: "{{ vault_n8n_db_password }}"
+  wikijs:
+    name: wikijs
+    user: wikijs
+    password: "{{ vault_wikijs_db_password }}"
+  agent:
+    name: agent_memory
+    user: agent
+    password: "{{ vault_agent_db_password }}"
+
+# hostname -> private IP for the whole stack (single source of truth).
+# Mirrors the IPs in vagrant/Vagrantfile; feeds the common role's /etc/hosts.
+stack_hosts:
+  postgresql: "192.168.56.13"
+  ollama: "192.168.56.12"
+  n8n: "192.168.56.11"
+  wikijs: "192.168.56.14"

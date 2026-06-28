@@ -1,0 +1,15 @@
+n8n_version: "2.28.2"
+n8n_workflow_id: "4dDXXTSQZT5Ugq5f"
+
+n8n_encryption_key: "{{ vault_n8n_encryption_key }}"
+
+n8n_owner:
+  managed_by_env: true
+  email: admin@admin.com
+  first_name: admin
+  last_name: adminov
+  password: "{{ vault_n8n_owner_password }}"
+
+# convenience handles into the shared registry
+n8n_db: "{{ databases.n8n }}"
+agent_db: "{{ databases.agent }}" # n8n seeds these into credentials.json
