@@ -1,0 +1,21 @@
+---
+- name: Apply all pending Postgresql restart before connecting
+  ansible.builtin.meta: flush_handlers
+
+- name: Create application roles
+  community.postgresql.postgresql_user:
+    name: "{{ item.value.user }}"
+    password: "{{ item.value.password }}"
+  loop: "{{ databases | dict2items }}"
+  loop_control:
+    label: "{{ item.value.user }}"
+  become_user: postgres
+
+- name: Create application databases
+  community.postgresql.postgresql_db:
+    name: "{{ item.value.name }}"
+    owner: "{{ item.value.user }}"
+  loop: "{{ databases | dict2items }}"
+  loop_control:
+    label: "{{ item.value.name }}"
+  become_user: postgres

@@ -1,3 +1,39 @@
 postgresql_version: 16
-postgresql_allowed_subnet: "{{ private_subnet }}"
 # (databases registry comes from group_vars/all)
+
+postgresql_global_config_options:
+  - { option: listen_addresses, value: "*" }
+  - {
+      option: unix_socket_directories, # role default
+      value: "{{ postgresql_unix_socket_directories | join(',') }}",
+    }
+  - { option: log_directory, value: "log" } # role default
+
+postgresql_hba_entries:
+  - { type: local, database: all, user: postgres, auth_method: peer } # role default
+  - { type: local, database: all, user: all, auth_method: peer } # role default
+  - {
+      type: host,
+      database: all,
+      user: all,
+      address: "127.0.0.1/32",
+      auth_method: "{{ postgresql_auth_method }}",
+    } # role default
+  - {
+      type: host,
+      database: all,
+      user: all,
+      address: "::1/128",
+      auth_method: "{{ postgresql_auth_method }}",
+    } # role default
+  - {
+      type: host,
+      database: all,
+      user: all,
+      address: "{{ private_subnet }}",
+      auth_method: scram-sha-256,
+    }
+
+# postgresql_users / postgresql_databases intentionally unset:
+# role+DB creation is owned by the postgres_databases role, which loops
+# the shared `databases` registry (group_vars/all).
