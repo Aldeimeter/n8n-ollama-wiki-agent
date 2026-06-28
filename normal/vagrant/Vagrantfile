@@ -1,0 +1,44 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+    
+# One entry per VM: machine name => hostname, private IP, RAM (MB), vCPUs.
+# Note: "wiki.js" is defined as "wikijs" because dots in hostnames are treated
+# as FQDN separators and confuse some tooling. Rename if you really want the dot.
+VMS = {
+  "postgresql" => { hostname: "postgresql", ip: "192.168.56.13", memory: 2048, cpus: 2 },
+  "ollama"     => { hostname: "ollama",     ip: "192.168.56.12", memory: 4096, cpus: 4 },
+  "n8n"        => { hostname: "n8n",        ip: "192.168.56.11", memory: 2048, cpus: 2, forwarded_ports: [{ guest: 5678, host: 5678 }]  },
+  "wikijs"     => { hostname: "wikijs",     ip: "192.168.56.14", memory: 2048, cpus: 2 , forwarded_ports: [{ guest: 3000, host: 3000 }] },
+}
+
+# Build "<ip> <hostname>" lines so every VM can resolve the others by name.
+HOSTS_BLOCK = VMS.map { |_, o| "#{o[:ip]} #{o[:hostname]}" }.join('\n')
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/ubuntu-24.04"
+
+  VMS.each do |name, opts|
+    config.vm.define name do |node|
+      node.vm.hostname = opts[:hostname]
+      node.vm.network "private_network", ip: opts[:ip]
+
+      (opts[:forwarded_ports] || []).each do |pf|
+          node.vm.network "forwarded_port", guest: pf[:guest], host: pf[:host], host_ip: "127.0.0.1"
+      end
+
+      node.vm.provider "virtualbox" do |vb|
+        vb.name   = "normal-#{name}"
+        vb.memory = opts[:memory]
+        vb.cpus   = opts[:cpus]
+      end
+
+      # Add /etc/hosts entries for the whole stack (idempotent).
+      # node.vm.provision "shell", inline:
+      #   "grep -q '## vagrant-stack ##' /etc/hosts || " \
+      #   "printf '## vagrant-stack ##\\n#{HOSTS_BLOCK}\\n' >> /etc/hosts"
+
+
+    end
+  end
+end
