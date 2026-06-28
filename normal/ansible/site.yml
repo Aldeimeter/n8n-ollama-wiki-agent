@@ -4,3 +4,11 @@
   become: true
   roles:
     - common
+
+- name: Install docker on app hosts
+  hosts: ai:automation:wiki
+  become: true
+  roles:
+    - role: geerlingguy.docker
+      docker_users:
+        - vagrant
