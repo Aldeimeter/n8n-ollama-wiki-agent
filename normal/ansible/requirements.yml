@@ -6,3 +6,4 @@ roles:
     version: "4.1.0"
 collections:
   - name: community.postgresql
+  - name: community.docker

@@ -1,0 +1,45 @@
+---
+- name: Ensure Docker SDK for python is present
+  ansible.builtin.apt:
+    name: python3-docker
+    state: present
+
+- name: Wait for the background image pull to finish
+  ansible.builtin.async_status:
+    jid: "{{ ollama_image_job.ansible_job_id }}"
+  register: ollama_image_result
+  until: ollama_image_result.finished
+  retries: 120
+  delay: 10
+  when: ollama_image_job is defined
+
+- name: Ensure image is present (fallback for standalone --limit ai runs)
+  community.docker.docker_image_pull:
+    name: "ollama/ollama:{{ ollama_version }}"
+    timeout: 1800
+  when: ollama_image_job is not defined
+
+- name: Run the ollama container
+  community.docker.docker_container:
+    name: ollama
+    image: "ollama/ollama:{{ ollama_version }}"
+    state: started
+    restart_policy: unless-stopped
+    published_ports:
+      - "11434:11434"
+    volumes:
+      - "ollama:/root/.ollama"
+
+- name: Wait for the ollama API ( and capture installed models )
+  ansible.builtin.command: docker exec ollama ollama list
+  register: ollama_ready
+  retries: 30
+  delay: 2
+  until: ollama_ready.rc == 0
+  changed_when: false
+
+- name: Pull configured models (only if missing)
+  ansible.builtin.command: "docker exec ollama ollama pull {{ item }}"
+  loop: "{{ ollama_models }}"
+  when: item not in ollama_ready.stdout
+  changed_when: true
