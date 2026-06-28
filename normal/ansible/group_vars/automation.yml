@@ -13,3 +13,9 @@ n8n_owner:
 # convenience handles into the shared registry
 n8n_db: "{{ databases.n8n }}"
 agent_db: "{{ databases.agent }}" # n8n seeds these into credentials.json
+
+# Fixed bcrypt salt (22 chars, bcrypt alphabet) so the owner hash is
+# DETERMINISTIC across runs -> compose file is stable -> no needless recreate.
+# Not a secret; reused for the single owner account only.
+n8n_owner_password_salt: "n8nOwnerSalt0123456789"
+n8n_timezone: "Europe/Bratislava"

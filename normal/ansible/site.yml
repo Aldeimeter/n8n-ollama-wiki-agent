@@ -44,6 +44,11 @@
   roles:
     - wikijs
 
+- name: N8N
+  hosts: automation
+  become: true
+  roles:
+    - n8n
 # keep the last
 - name: Ollama
   hosts: ai

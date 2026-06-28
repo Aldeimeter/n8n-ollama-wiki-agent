@@ -1,0 +1,28 @@
+---
+- name: Import n8n credentials
+  ansible.builtin.command:
+    cmd: docker compose run --rm n8n import:credentials --input=/credentials.json
+    chdir: /opt/n8n
+  changed_when: true
+
+- name: Check whether the workflow already exists
+  ansible.builtin.command:
+    cmd: "docker compose run --rm n8n export:workflow --id={{ n8n_workflow_id }} --output=/tmp/wf.json"
+    chdir: /opt/n8n
+  register: n8n_wf_check
+  failed_when: false
+  changed_when: false
+
+- name: Import workflow (only if missing)
+  ansible.builtin.command:
+    cmd: docker compose run --rm n8n import:workflow --input=/workflow.json
+    chdir: /opt/n8n
+  when: n8n_wf_check.rc != 0
+  changed_when: true
+
+- name: Publish workflow (only if just imported)
+  ansible.builtin.command:
+    cmd: "docker compose run --rm n8n publish:workflow --id={{ n8n_workflow_id }}"
+    chdir: /opt/n8n
+  when: n8n_wf_check.rc != 0
+  changed_when: true

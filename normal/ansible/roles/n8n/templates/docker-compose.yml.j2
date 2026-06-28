@@ -1,0 +1,40 @@
+volumes:
+  n8n-data:
+
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:{{ n8n_version }}
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: "{{ postgres_host }}"
+      DB_POSTGRESDB_DATABASE: "{{ n8n_db.name }}"
+      DB_POSTGRESDB_USER: "{{ n8n_db.user }}"
+      DB_POSTGRESDB_PASSWORD: "{{ n8n_db.password }}"
+      N8N_ENCRYPTION_KEY: "{{ n8n_encryption_key }}"
+      N8N_RUNNERS_ENABLED: "true"
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_PERSONALIZATION_ENABLED: "false"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+      GENERIC_TIMEZONE: "{{ n8n_timezone | default('UTC') }}"
+      TZ: "{{ n8n_timezone | default('UTC') }}"
+{% if n8n_owner.managed_by_env %}
+      N8N_INSTANCE_OWNER_MANAGED_BY_ENV: "true"
+      N8N_INSTANCE_OWNER_EMAIL: "{{ n8n_owner.email }}"
+      N8N_INSTANCE_OWNER_FIRST_NAME: "{{ n8n_owner.first_name }}"
+      N8N_INSTANCE_OWNER_LAST_NAME: "{{ n8n_owner.last_name }}"
+      N8N_INSTANCE_OWNER_PASSWORD_HASH: "{{ (n8n_owner.password | password_hash('bcrypt', salt=n8n_owner_password_salt)) | replace('$', '$$') }}"
+{% endif %}
+    volumes:
+      - n8n-data:/home/node/.n8n
+      - /opt/n8n/workflow.json:/workflow.json:ro
+      - /opt/n8n/credentials.json:/credentials.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:5678/healthz/readiness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s

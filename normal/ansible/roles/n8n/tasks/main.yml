@@ -1,0 +1,52 @@
+---
+- name: Ensure n8n dir exists
+  ansible.builtin.file:
+    path: /opt/n8n
+    state: directory
+    mode: "0750"
+
+- name: Copy workflow.json
+  ansible.builtin.copy:
+    src: workflow.json
+    dest: /opt/n8n/workflow.json
+    owner: "1000"
+    group: "1000"
+    mode: "0640"
+
+- name: Render credentials.json
+  ansible.builtin.template:
+    src: credentials.json.j2
+    dest: /opt/n8n/credentials.json
+    owner: "1000"
+    group: "1000"
+    mode: "0600"
+
+- name: Render n8n compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/n8n/docker-compose.yml
+    mode: "0600"
+
+- name: Wait for Postgres to be reachable
+  ansible.builtin.wait_for:
+    host: "{{ postgres_host }}"
+    port: "{{ postgres_port }}"
+    timeout: 60
+
+- name: Start n8n
+  community.docker.docker_compose_v2:
+    project_src: /opt/n8n
+    state: present
+
+- name: Wait for n8n readiness
+  ansible.builtin.uri:
+    url: "http://localhost:5678/healthz/readiness"
+    status_code: 200
+  register: n8n_ready
+  retries: 30
+  delay: 2
+  until: n8n_ready.status == 200
+
+- name: Seed credentials + workflow
+  ansible.builtin.import_tasks: seed.yml
+  tags: [seed]
