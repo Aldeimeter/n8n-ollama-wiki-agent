@@ -1,0 +1,31 @@
+---
+- name: Ensure wikijs dir exists
+  ansible.builtin.file:
+    path: /opt/wikijs
+    state: directory
+    mode: "0750"
+
+- name: Render wikijs compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/wikijs/docker-compose.yml
+    mode: "0600"
+  register: wikijs_compose
+
+- name: Start wikijs
+  community.docker.docker_compose_v2:
+    project_src: /opt/wikijs
+    state: present # == docker compose up -d
+
+- name: Wait for wikijs HTTP to respond
+  ansible.builtin.uri:
+    url: "http://localhost:3000"
+    status_code: 200
+  register: wiki_http
+  retries: 30
+  delay: 2
+  until: wiki_http.status == 200
+
+- name: Seed admin + content
+  ansible.builtin.import_tasks: seed.yml
+  tags: [seed]

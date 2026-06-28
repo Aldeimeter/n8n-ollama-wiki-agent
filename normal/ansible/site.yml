@@ -38,6 +38,12 @@
     - geerlingguy.postgresql # install + cluster config (runs first)
     - postgres_databases # create roles+DBs from the registry
 
+- name: WikiJS
+  hosts: wiki
+  become: true
+  roles:
+    - wikijs
+
 # keep the last
 - name: Ollama
   hosts: ai

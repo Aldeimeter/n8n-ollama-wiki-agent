@@ -1,0 +1,13 @@
+services:
+  wikijs:
+    image: ghcr.io/requarks/wiki:{{ wikijs_version }}
+    restart: unless-stopped
+    environment:
+      - DB_TYPE=postgres
+      - DB_HOST={{ postgres_host }}
+      - DB_PORT={{ postgres_port }}
+      - DB_USER={{ wikijs_db.user }}
+      - DB_PASS={{ wikijs_db.password }}
+      - DB_NAME={{ wikijs_db.name }}
+    ports:
+      - "3000:3000"

@@ -1,0 +1,62 @@
+---
+- name: Finalize wikijs setup (create admin)
+  ansible.builtin.uri:
+    url: "http://localhost:3000/finalize"
+    method: POST
+    body_format: json
+    body:
+      adminEmail: "{{ wikijs_admin.email }}"
+      adminPassword: "{{ wikijs_admin.password }}"
+      adminPasswordConfirm: "{{ wikijs_admin.password }}"
+      siteUrl: "{{ wikijs_site_url }}"
+      telemetry: false
+    status_code: [200, 404] # 404 - admin exists - idempotent
+  register: wiki_finalize
+
+- name: Wait for wikijs to come back after finalize
+  ansible.builtin.uri:
+    url: "http://localhost:3000"
+    status_code: 200
+  register: wiki_up
+  retries: 30
+  delay: 2
+  until: wiki_up.status == 200
+
+- name: Login and get JWT
+  ansible.builtin.uri:
+    url: "http://localhost:3000/graphql"
+    method: POST
+    body_format: json
+    body:
+      query: >-
+        mutation($u:String!,$p:String!){authentication{login(username:$u,password:$p,strategy:"local"){jwt}}}
+      variables:
+        { u: "{{ wikijs_admin.email }}", p: "{{ wikijs_admin.password }}" }
+    return_content: true
+  register: wiki_login
+  retries: 10
+  delay: 3
+  until: wiki_login.json.data.authentication.login.jwt is defined
+
+- name: Seed content pages
+  ansible.builtin.uri:
+    url: "http://localhost:3000/graphql"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ wiki_login.json.data.authentication.login.jwt }}"
+    body_format: json
+    body:
+      query: >-
+        mutation($c:String!,$p:String!,$t:String!){pages{create(content:$c,description:"",editor:"markdown",isPublished:true,isPrivate:false,locale:"en",path:$p,tags:[],title:$t){responseResult{succeeded message}}}}
+      variables:
+        c: "{{ lookup('file', item.file) }}"
+        p: "{{ item.path }}"
+        t: "{{ item.title }}"
+  loop:
+    - { path: home, title: "Home", file: "files/home.md" }
+    - {
+        path: vagrant-setup,
+        title: "Vagrant configuration",
+        file: "files/vagrant-setup.md",
+      }
+  loop_control: { label: "{{ item.path }}" }
