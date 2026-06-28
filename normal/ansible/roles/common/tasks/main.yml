@@ -1,0 +1,16 @@
+---
+# common: base setup for every host in the stack
+
+- name: Update apt cache (reuse if younger than 1h)
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Ensure stack hostnames resolve via /etc/hosts
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    marker: "# {mark} ANSIBLE vagrant-stack"
+    block: |
+      {% for name, ip in stack_hosts.items() %}
+      {{ ip }} {{ name }}
+      {% endfor %}

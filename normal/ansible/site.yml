@@ -1,0 +1,6 @@
+---
+- name: Base setup on all hosts
+  hosts: all
+  become: true
+  roles:
+    - common
