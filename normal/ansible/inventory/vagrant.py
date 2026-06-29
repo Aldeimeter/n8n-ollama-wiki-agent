@@ -12,7 +12,8 @@ import json, os, subprocess, sys
 GROUPS = {
     "postgresql": ["db"],
     "ollama": ["ai"],
-    "n8n": ["automation"],
+    "n8n-web": ["automation", "n8n_web"],
+    "n8n-worker": ["automation", "n8n_worker"],
     "wikijs": ["wiki"],
     "redis": ["queue"],
 }
