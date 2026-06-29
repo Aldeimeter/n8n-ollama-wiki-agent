@@ -5,9 +5,12 @@ redis_bind_interface: "127.0.0.1 {{ stack_hosts.redis }}"
 # set redis password
 redis_requirepass: "{{ vault_redis_password }}"
 
-# cap RAM usage
+# cap RAM usage and block eviction
 redis_maxmemory: "256mb"
-redis_maxmemory_policy: "allkeys-lru"
+redis_maxmemory_policy: "noeviction"
 
 # make redis append-only
 redis_appendonly: "yes"
+
+# disable redis timeout so redis doesn't kill worker connections
+redis_timeout: 0
