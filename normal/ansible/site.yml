@@ -56,6 +56,17 @@
   roles:
     - n8n-common
 
+- name: n8n web
+  hosts: n8n_web
+  become: true
+  roles:
+    - n8n-web
+
+- name: n8n worker
+  hosts: n8n_worker
+  become: true
+  roles:
+    - n8n-worker
 # keep the last
 - name: Ollama
   hosts: ai

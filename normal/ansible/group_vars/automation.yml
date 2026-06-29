@@ -21,3 +21,4 @@ n8n_owner_password_salt: "n8nOwnerSalt0123456789"
 n8n_timezone: "Europe/Bratislava"
 
 redis_host: redis
+redis_password: "{{ vault_redis_password }}"

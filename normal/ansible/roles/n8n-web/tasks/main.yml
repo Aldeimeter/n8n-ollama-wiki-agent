@@ -1,10 +1,4 @@
 ---
-- name: Ensure n8n dir exists
-  ansible.builtin.file:
-    path: /opt/n8n
-    state: directory
-    mode: "0750"
-
 - name: Copy workflow.json
   ansible.builtin.copy:
     src: workflow.json
@@ -26,12 +20,6 @@
     src: docker-compose.yml.j2
     dest: /opt/n8n/docker-compose.yml
     mode: "0600"
-
-- name: Wait for Postgres to be reachable
-  ansible.builtin.wait_for:
-    host: "{{ postgres_host }}"
-    port: "{{ postgres_port }}"
-    timeout: 60
 
 - name: Start n8n
   community.docker.docker_compose_v2:
