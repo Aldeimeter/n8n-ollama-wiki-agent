@@ -5,6 +5,9 @@ private_subnet: "192.168.56.0/24"
 postgres_host: "postgresql"
 postgres_port: 5432
 
+# Where automation reach redis (host is set in automation.yml)
+redis_port: 6379
+
 # Db registry: structure is clear, passwords pulled from the vault.
 # Postgres iterates this to create roles+DBs; each app reads its own entry.
 databases:
@@ -26,6 +29,7 @@ databases:
 stack_hosts:
   postgresql: "192.168.56.13"
   ollama: "192.168.56.12"
-  n8n: "192.168.56.11"
+  n8n-web: "192.168.56.11"
+  n8n-worker: "192.168.56.16"
   wikijs: "192.168.56.14"
   redis: "192.168.56.15"
