@@ -1,0 +1,27 @@
+---
+- name: Ensure Docker SDK for python is present
+  ansible.builtin.apt:
+    name: python3-docker
+    state: present
+
+- name: Pull the n8n image
+  community.docker.docker_image_pull:
+    name: "docker.n8n.io/n8nio/n8n:{{ n8n_version }}"
+
+- name: Ensure n8n dir exists
+  ansible.builtin.file:
+    path: /opt/n8n
+    state: directory
+    mode: "0750"
+
+- name: Wait for Postgres to be reachable
+  ansible.builtin.wait_for:
+    host: "{{ postgres_host }}"
+    port: "{{ postgres_port }}"
+    timeout: 60
+
+- name: Wait for Redis to be reachable
+  ansible.builtin.wait_for:
+    host: "{{ redis_host }}"
+    port: "{{ redis_port }}"
+    timeout: 60

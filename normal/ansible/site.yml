@@ -50,11 +50,12 @@
   roles:
     - geerlingguy.redis
 
-- name: N8N
+- name: Prepare n8n machines
   hosts: automation
   become: true
   roles:
-    - n8n
+    - n8n-common
+
 # keep the last
 - name: Ollama
   hosts: ai
