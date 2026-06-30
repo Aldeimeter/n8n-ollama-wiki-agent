@@ -1,6 +1,6 @@
 ---
 # bind redis to private network address
-redis_bind_interface: "127.0.0.1 {{ stack_hosts.redis }}"
+redis_bind_interface: "127.0.0.1 {{ internal_ip }}"
 
 # set redis password
 redis_requirepass: "{{ vault_redis_password }}"

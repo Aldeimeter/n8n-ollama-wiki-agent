@@ -11,6 +11,6 @@
     path: /etc/hosts
     marker: "# {mark} ANSIBLE vagrant-stack"
     block: |
-      {% for name, ip in stack_hosts.items() %}
-      {{ ip }} {{ name }}
+      {% for h in groups['all'] %}
+      {{ hostvars[h].internal_ip }} {{ h }}
       {% endfor %}

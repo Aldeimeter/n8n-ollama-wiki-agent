@@ -1,6 +1,4 @@
 # shared vars every host may need
-private_subnet: "192.168.56.0/24"
-
 # Where apps reach postgres (resolved via /etc/hosts set by a common role)
 postgres_host: "postgresql"
 postgres_port: 5432
@@ -24,12 +22,4 @@ databases:
     user: agent
     password: "{{ vault_agent_db_password }}"
 
-# hostname -> private IP for the whole stack (single source of truth).
-# Mirrors the IPs in vagrant/Vagrantfile; feeds the common role's /etc/hosts.
-stack_hosts:
-  postgresql: "192.168.56.13"
-  ollama: "192.168.56.12"
-  n8n-web: "192.168.56.11"
-  n8n-worker: "192.168.56.16"
-  wikijs: "192.168.56.14"
-  redis: "192.168.56.15"
+deploy_user: "vagrant"

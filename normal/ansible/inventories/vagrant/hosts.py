@@ -6,7 +6,7 @@ while the GROUPS map below supplies membership.
 Group names MUST match the files in group_vars/ (db, ai, n8n, wikijs)
 """
 
-import json, os, subprocess, sys
+import yaml, json, os, subprocess, sys
 
 # host -> groups. Mirror your group_vars/*.yml filenames
 GROUPS = {
@@ -21,7 +21,8 @@ GROUPS = {
 # this script lives at normal/ansible/inventory/vagrant.py
 # the Vagrantfile and .vagrant/ lives at normal/vagrant/.
 HERE = os.path.dirname(os.path.abspath(__file__))
-VAGRANT_DIR = os.path.normpath(os.path.join(HERE, "..", "..", "vagrant"))
+VAGRANT_DIR = os.path.normpath(os.path.join(HERE, "..", "..", "..", "vagrant"))
+VMS = yaml.safe_load(open(os.path.join(VAGRANT_DIR, "vms.yml")))
 
 
 def ssh_config():
@@ -51,6 +52,7 @@ def build():
             "ansible_port": int(cfg.get("Port", 22)),
             "ansible_user": cfg.get("User"),
             "ansible_ssh_private_key_file": cfg.get("IdentityFile", "").strip('""'),
+            "internal_ip": VMS[host]["ip"],
         }
         for group in GROUPS.get(host, ["ungrouped"]):
             inv.setdefault(group, {"hosts": []})["hosts"].append(host)

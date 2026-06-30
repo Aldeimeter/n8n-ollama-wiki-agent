@@ -11,7 +11,7 @@
   roles:
     - role: geerlingguy.docker
       docker_users:
-        - vagrant
+        - "{{ deploy_user }}"
 
 - name: Pre-pull ollama image in the background
   hosts: ai
