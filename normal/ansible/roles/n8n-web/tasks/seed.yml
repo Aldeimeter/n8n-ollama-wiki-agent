@@ -1,28 +1,45 @@
 ---
 - name: Import n8n credentials
-  ansible.builtin.command:
-    cmd: docker compose run --rm n8n import:credentials --input=/credentials.json
-    chdir: /opt/n8n
+  community.docker.docker_compose_v2_run:
+    project_src: /opt/n8n
+    service: n8n
+    cleanup: true
+    argv:
+      - "import:credentials"
+      - "--input=/credentials.json"
   changed_when: true
 
 - name: Check whether the workflow already exists
-  ansible.builtin.command:
-    cmd: "docker compose run --rm n8n export:workflow --id={{ n8n_workflow_id }} --output=/tmp/wf.json"
-    chdir: /opt/n8n
+  community.docker.docker_compose_v2_run:
+    project_src: /opt/n8n
+    service: n8n
+    cleanup: true
+    argv:
+      - "export:workflow"
+      - "--id={{ n8n_workflow_id }}"
+      - "--output=/tmp/wf.json"
   register: n8n_wf_check
   failed_when: false
   changed_when: false
 
 - name: Import workflow (only if missing)
-  ansible.builtin.command:
-    cmd: docker compose run --rm n8n import:workflow --input=/workflow.json
-    chdir: /opt/n8n
+  community.docker.docker_compose_v2_run:
+    project_src: /opt/n8n
+    service: n8n
+    cleanup: true
+    argv:
+      - "import:workflow"
+      - "--input=/workflow.json"
   when: n8n_wf_check.rc != 0
   changed_when: true
 
 - name: Publish workflow (only if just imported)
-  ansible.builtin.command:
-    cmd: "docker compose run --rm n8n publish:workflow --id={{ n8n_workflow_id }}"
-    chdir: /opt/n8n
+  community.docker.docker_compose_v2_run:
+    project_src: /opt/n8n
+    service: n8n
+    cleanup: true
+    argv:
+      - "publish:workflow"
+      - "--id={{ n8n_workflow_id }}"
   when: n8n_wf_check.rc != 0
   changed_when: true

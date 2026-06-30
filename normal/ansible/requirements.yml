@@ -9,3 +9,4 @@ roles:
 collections:
   - name: community.postgresql
   - name: community.docker
+    version: ">=3.13.0"
