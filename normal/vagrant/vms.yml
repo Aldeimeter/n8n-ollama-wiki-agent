@@ -1,0 +1,21 @@
+postgresql: { ip: 192.168.56.13, memory: 1024, cpus: 2, groups: [db] }
+ollama: { ip: 192.168.56.12, memory: 4096, cpus: 4, groups: [ai] }
+n8n-web:
+  {
+    ip: 192.168.56.11,
+    memory: 1024,
+    cpus: 1,
+    groups: [automation, n8n_web],
+    forwarded_ports: [{ guest: 5678, host: 5678 }],
+  }
+n8n-worker:
+  { ip: 192.168.56.16, memory: 1024, cpus: 2, groups: [automation, n8n_worker] }
+wikijs:
+  {
+    ip: 192.168.56.14,
+    memory: 1024,
+    cpus: 2,
+    groups: [wiki],
+    forwarded_ports: [{ guest: 3000, host: 3000 }],
+  }
+redis: { ip: 192.168.56.15, memory: 1024, cpus: 1, groups: [queue] }

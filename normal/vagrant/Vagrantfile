@@ -5,24 +5,22 @@
 # One entry per VM: machine name => hostname, private IP, RAM (MB), vCPUs.
 # Note: "wiki.js" is defined as "wikijs" because dots in hostnames are treated
 # as FQDN separators and confuse some tooling. Rename if you really want the dot.
-VMS = {
-  "postgresql" => { hostname: "postgresql", ip: "192.168.56.13", memory: 1024, cpus: 2 },
-  "ollama"     => { hostname: "ollama",     ip: "192.168.56.12", memory: 4096, cpus: 4 },
-  "n8n-web"    => { hostname: "n8n-web",        ip: "192.168.56.11", memory: 1024, cpus: 1, forwarded_ports: [{ guest: 5678, host: 5678 }]  },
-  "n8n-worker" => { hostname: "n8n-worker",        ip: "192.168.56.16", memory: 1024, cpus: 2 },
-  "wikijs"     => { hostname: "wikijs",     ip: "192.168.56.14", memory: 1024, cpus: 2, forwarded_ports: [{ guest: 3000, host: 3000 }] },
-  "redis"      => { hostname: "redis",      ip: "192.168.56.15", memory: 1024, cpus: 1 }
-}
+require 'yaml'
+require 'json'
+# vms.yml uses string keys; round-trip through JSON to deep-symbolize them
+# (incl. nested forwarded_ports) so opts[:ip] / pf[:guest] resolve.
+VMS = JSON.parse(YAML.load_file('vms.yml').to_json, symbolize_names: true) # normal/vagrant/vms.yml
 
 # Build "<ip> <hostname>" lines so every VM can resolve the others by name.
-HOSTS_BLOCK = VMS.map { |_, o| "#{o[:ip]} #{o[:hostname]}" }.join('\n')
+# hostname == the map key (vms.yml has no separate hostname field).
+HOSTS_BLOCK = VMS.map { |name, o| "#{o[:ip]} #{name}" }.join('\n')
 
 Vagrant.configure("2") do |config|
   config.vm.box = "bento/ubuntu-24.04"
 
   VMS.each do |name, opts|
     config.vm.define name do |node|
-      node.vm.hostname = opts[:hostname]
+      node.vm.hostname = name
       node.vm.network "private_network", ip: opts[:ip]
 
       (opts[:forwarded_ports] || []).each do |pf|
