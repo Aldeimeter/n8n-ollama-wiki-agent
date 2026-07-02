@@ -77,17 +77,17 @@ resource "local_sensitive_file" "ssh_private_key" {
 
 locals {
   vms = {
-    postgresql = { cores = 2, memory = 2, core_fraction = 20,  groups = ["db"] }
+    postgresql = { cores = 2, memory = 2, core_fraction = 20, groups = ["db"] }
     ollama     = { cores = 4, memory = 8, core_fraction = 100, disk = 30, groups = ["ai"] }
-    n8n-web    = { cores = 2, memory = 2, core_fraction = 20,  groups = ["automation", "n8n_web"] }
-    n8n-worker = { cores = 2, memory = 2, core_fraction = 20,  groups = ["automation", "n8n_worker"] }
-    wikijs     = { cores = 2, memory = 2, core_fraction = 20,  groups = ["wiki"] }
-    redis      = { cores = 2, memory = 1, core_fraction = 20,  groups = ["queue"] }
+    n8n-web    = { cores = 2, memory = 2, core_fraction = 20, groups = ["automation", "n8n_web"] }
+    n8n-worker = { cores = 2, memory = 2, core_fraction = 20, groups = ["automation", "n8n_worker"] }
+    wikijs     = { cores = 2, memory = 2, core_fraction = 20, groups = ["wiki"] }
+    redis      = { cores = 2, memory = 1, core_fraction = 20, groups = ["queue"] }
   }
 
-  app_sg = { 
+  app_sg = {
     n8n-web = yandex_vpc_security_group.public_n8n_web.id
-    wikijs = yandex_vpc_security_group.public_wikijs.id
+    wikijs  = yandex_vpc_security_group.public_wikijs.id
   }
 }
 
@@ -98,15 +98,15 @@ data "yandex_compute_image" "ubuntu" {
 resource "yandex_compute_instance" "vm" {
   for_each = local.vms
 
-  name = "${local.prefix}-${each.key}"
-  hostname = "${each.key}"
+  name        = "${local.prefix}-${each.key}"
+  hostname    = each.key
   platform_id = "standard-v3"
-  zone = var.zone
-  
+  zone        = var.zone
+
 
   resources {
-    cores = each.value.cores
-    memory = each.value.memory
+    cores         = each.value.cores
+    memory        = each.value.memory
     core_fraction = each.value.core_fraction
   }
 
@@ -114,16 +114,16 @@ resource "yandex_compute_instance" "vm" {
   boot_disk {
     initialize_params {
       image_id = data.yandex_compute_image.ubuntu.id
-      size = try(each.value.disk, 20)  # if disk not set, default = 20
-      type = "network-ssd" 
+      size     = try(each.value.disk, 20) # if disk not set, default = 20
+      type     = "network-ssd"
     }
   }
 
   network_interface {
     subnet_id = yandex_vpc_subnet.main.id
-    nat = true # so we have public ip for ansible
+    nat       = true # so we have public ip for ansible
     security_group_ids = compact([
-      yandex_vpc_security_group.internal.id, 
+      yandex_vpc_security_group.internal.id,
       lookup(local.app_sg, each.key, null)
     ])
   }
@@ -134,4 +134,42 @@ resource "yandex_compute_instance" "vm" {
 
   scheduling_policy { preemptible = true }
   allow_stopping_for_update = true
+}
+
+locals {
+  # every distinct group across the stack
+  all_groups = distinct(flatten([for _, vm in local.vms : vm.groups]))
+
+  # per-host connection facts, read back off created instances 
+  host_vars = {
+    for name, inst in yandex_compute_instance.vm : name => {
+      ansible_host = inst.network_interface[0].nat_ip_address
+      internal_ip  = inst.network_interface[0].ip_address
+    }
+  }
+  # the ansible YAML inventory as an HCL object
+  yc_inventory = {
+    all = {
+      vars = {
+        ansible_user                 = var.deploy_user
+        deploy_user                  = var.deploy_user
+        ansible_ssh_private_key_file = abspath(local_sensitive_file.ssh_private_key.filename)
+        private_subnet               = one(yandex_vpc_subnet.main.v4_cidr_blocks)
+
+      }
+      children = {
+        for g in local.all_groups : g => {
+          hosts = {
+            for name, vm in local.vms : name => local.host_vars[name]
+            if contains(vm.groups, g)
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "local_file" "yc_inventory" {
+  filename = "${path.module}/../../../ansible/inventories/yc/hosts.yml"
+  content  = yamlencode(local.yc_inventory)
 }

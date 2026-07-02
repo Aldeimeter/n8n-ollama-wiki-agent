@@ -21,5 +21,5 @@ variable "environment" {
 
 variable "deploy_user" {
   type    = string
-  default = "ansible"
+  default = "ubuntu"
 }
