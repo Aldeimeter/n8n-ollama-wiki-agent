@@ -11,8 +11,25 @@ resource "yandex_vpc_subnet" "main" {
   name           = "${local.prefix}-subnet"
   folder_id      = var.folder_id
   network_id     = yandex_vpc_network.main.id
+  route_table_id = yandex_vpc_route_table.route_table.id
   zone           = var.zone
   v4_cidr_blocks = ["10.0.1.0/24"]
+}
+
+resource "yandex_vpc_gateway" "nat_gateway" {
+  name      = "${local.prefix}-nat-gateway"
+  folder_id = var.folder_id
+  shared_egress_gateway {}
+}
+
+resource "yandex_vpc_route_table" "route_table" {
+  name       = "${local.prefix}-route-table"
+  folder_id  = var.folder_id
+  network_id = yandex_vpc_network.main.id
+  static_route {
+    destination_prefix = "0.0.0.0/0"
+    gateway_id         = yandex_vpc_gateway.nat_gateway.id
+  }
 }
 
 resource "yandex_vpc_security_group" "internal" {
@@ -27,13 +44,6 @@ resource "yandex_vpc_security_group" "internal" {
     predefined_target = "self_security_group"
   }
 
-  ingress {
-    description    = "SSH for ansible"
-    protocol       = "TCP"
-    port           = 22
-    v4_cidr_blocks = ["0.0.0.0/0"]
-  }
-
   egress {
     description    = "Allow all outbound (apt, docker pull, DNS)"
     protocol       = "ANY"
@@ -41,26 +51,13 @@ resource "yandex_vpc_security_group" "internal" {
   }
 }
 
-resource "yandex_vpc_security_group" "public_wikijs" {
-  name       = "${local.prefix}-public-wikijs-sg"
+resource "yandex_vpc_security_group" "bastion" {
+  name       = "${local.prefix}-bastion-sg"
   network_id = yandex_vpc_network.main.id
-
   ingress {
-    description    = "Wiki.js web UI"
+    description    = "SSH bastion jump-host"
     protocol       = "TCP"
-    port           = "3000"
-    v4_cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-resource "yandex_vpc_security_group" "public_n8n_web" {
-  name       = "${local.prefix}-public-n8n-web-sg"
-  network_id = yandex_vpc_network.main.id
-
-  ingress {
-    description    = "n8n web UI"
-    protocol       = "TCP"
-    port           = "5678"
+    port           = 22
     v4_cidr_blocks = ["0.0.0.0/0"]
   }
 }
@@ -75,6 +72,40 @@ resource "local_sensitive_file" "ssh_private_key" {
   file_permission = "0600"
 }
 
+resource "yandex_compute_instance" "bastion" {
+  name        = "${local.prefix}-bastion"
+  hostname    = "bastion"
+  zone        = var.zone
+  platform_id = "standard-v3"
+
+  resources {
+    cores         = 2
+    memory        = 1
+    core_fraction = 20
+  }
+
+  boot_disk {
+    initialize_params {
+      image_id = data.yandex_compute_image.ubuntu.id
+      size     = 10
+      type     = "network-ssd"
+    }
+  }
+
+  network_interface {
+    subnet_id          = yandex_vpc_subnet.main.id
+    nat                = true
+    security_group_ids = [yandex_vpc_security_group.internal.id, yandex_vpc_security_group.bastion.id]
+  }
+
+  metadata = {
+    ssh-keys = "${var.deploy_user}:${trimspace(tls_private_key.ssh.public_key_openssh)}"
+  }
+
+  scheduling_policy { preemptible = true }
+  allow_stopping_for_update = true
+}
+
 locals {
   vms = {
     postgresql = { cores = 2, memory = 2, core_fraction = 20, groups = ["db"] }
@@ -85,10 +116,6 @@ locals {
     redis      = { cores = 2, memory = 1, core_fraction = 20, groups = ["queue"] }
   }
 
-  app_sg = {
-    n8n-web = yandex_vpc_security_group.public_n8n_web.id
-    wikijs  = yandex_vpc_security_group.public_wikijs.id
-  }
 }
 
 data "yandex_compute_image" "ubuntu" {
@@ -121,11 +148,10 @@ resource "yandex_compute_instance" "vm" {
 
   network_interface {
     subnet_id = yandex_vpc_subnet.main.id
-    nat       = true # so we have public ip for ansible
-    security_group_ids = compact([
+    nat       = false
+    security_group_ids = [
       yandex_vpc_security_group.internal.id,
-      lookup(local.app_sg, each.key, null)
-    ])
+    ]
   }
 
   metadata = {
@@ -143,8 +169,9 @@ locals {
   # per-host connection facts, read back off created instances 
   host_vars = {
     for name, inst in yandex_compute_instance.vm : name => {
-      ansible_host = inst.network_interface[0].nat_ip_address
-      internal_ip  = inst.network_interface[0].ip_address
+      ansible_host            = inst.network_interface[0].ip_address
+      ansible_ssh_common_args = "-o ProxyCommand=\"ssh -i ${abspath(local_sensitive_file.ssh_private_key.filename)} -W %h:%p -o StrictHostKeyChecking=no ${var.deploy_user}@${yandex_compute_instance.bastion.network_interface[0].nat_ip_address}\""
+      internal_ip             = inst.network_interface[0].ip_address
     }
   }
   # the ansible YAML inventory as an HCL object
