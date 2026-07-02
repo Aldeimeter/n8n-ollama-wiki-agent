@@ -18,3 +18,8 @@ variable "environment" {
     error_message = "environment must be in ['dev', 'stage', 'prod']"
   }
 }
+
+variable "deploy_user" {
+  type    = string
+  default = "ansible"
+}
