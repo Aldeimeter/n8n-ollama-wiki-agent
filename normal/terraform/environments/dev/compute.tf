@@ -6,6 +6,7 @@ locals {
     n8n-worker = { cores = 2, memory = 2, core_fraction = 20, groups = ["automation", "n8n_worker"] }
     wikijs     = { cores = 2, memory = 2, core_fraction = 20, groups = ["wiki"] }
     redis      = { cores = 2, memory = 1, core_fraction = 20, groups = ["queue"] }
+    nginx      = { cores = 2, memory = 1, core_fraction = 20, groups = ["proxy"], nat = true }
   }
 }
 
@@ -35,10 +36,11 @@ resource "yandex_compute_instance" "vm" {
 
   network_interface {
     subnet_id = yandex_vpc_subnet.main.id
-    nat       = false
-    security_group_ids = [
-      yandex_vpc_security_group.internal.id,
-    ]
+    nat       = try(each.value.nat, false) 
+    security_group_ids = concat(
+      [yandex_vpc_security_group.internal.id],
+      contains(each.value.groups, "proxy") ? [yandex_vpc_security_group.proxy.id] : [],
+    )
   }
 
   metadata = {

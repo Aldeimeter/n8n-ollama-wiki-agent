@@ -27,3 +27,22 @@ resource "yandex_vpc_security_group" "bastion" {
     v4_cidr_blocks = ["0.0.0.0/0"]
   }
 }
+
+resource "yandex_vpc_security_group" "proxy" {
+  name = "${local.prefix}-proxy-sh"
+  network_id = yandex_vpc_network.main.id
+
+  ingress {
+    description = "HTTP"
+    protocol = "TCP"
+    port = 80
+    v4_cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTPS"
+    protocol = "TCP"
+    port = 443
+    v4_cidr_blocks = ["0.0.0.0/0"]
+  }
+}
