@@ -18,7 +18,8 @@ locals {
         deploy_user                  = var.deploy_user
         ansible_ssh_private_key_file = abspath(local_sensitive_file.ssh_private_key.filename)
         private_subnet               = one(yandex_vpc_subnet.main.v4_cidr_blocks)
-
+        n8n_public_url               = "http://n8n.stack.local"
+        wikijs_site_url              = "http://wiki.stack.local"
       }
       children = {
         for g in local.all_groups : g => {

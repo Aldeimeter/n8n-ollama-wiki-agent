@@ -1,4 +1,4 @@
-output "subnet_cidr" {
-  value = one(yandex_vpc_subnet.main.v4_cidr_blocks)
+output "nginx_public_ip" {
+  value = yandex_compute_instance.vm["nginx"].network_interface[0].nat_ip_address
 }
 

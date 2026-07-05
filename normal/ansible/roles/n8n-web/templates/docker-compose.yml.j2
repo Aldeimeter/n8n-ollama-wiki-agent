@@ -29,6 +29,8 @@ services:
       N8N_INSTANCE_OWNER_PASSWORD_HASH: "{{ (n8n_owner.password | password_hash('bcrypt', salt=n8n_owner_password_salt)) | replace('$', '$$') }}"
 {% endif %}
       EXECUTIONS_MODE: "queue"
+      WEBHOOK_URL: "{{ n8n_public_url }}" 
+      N8N_PROXY_HOPS: "1"
     volumes:
       - n8n-data:/home/node/.n8n
       - /opt/n8n/workflow.json:/workflow.json:ro
