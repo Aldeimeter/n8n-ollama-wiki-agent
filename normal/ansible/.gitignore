@@ -1,3 +1,4 @@
 .vault_pass
 roles/geerlingguy.*
+roles/nginxinc.*
 inventories/yc/hosts.yml

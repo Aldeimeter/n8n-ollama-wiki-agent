@@ -67,6 +67,13 @@
   become: true
   roles:
     - n8n-worker
+
+- name: Nginx
+  hosts: proxy
+  become: true
+  roles:
+    - nginx
+
 # keep the last
 - name: Ollama
   hosts: ai
